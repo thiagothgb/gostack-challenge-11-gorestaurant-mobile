@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView } from 'react-native';
+import { Alert, Image, ScrollView } from 'react-native';
 
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
@@ -59,15 +59,37 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     async function loadFoods(): Promise<void> {
-      // Load Foods from API
+      try {
+        const { data } = await api.get<Category[]>(
+          `foods?category=${selectedCategory}`,
+        );
+
+        setCategories(data);
+      } catch (error) {
+        Alert.alert(
+          'Inconsistência',
+          'Não foi possível carregar as categorias',
+        );
+      }
     }
 
-    loadFoods();
+    if (selectedCategory) {
+      loadFoods();
+    }
   }, [selectedCategory, searchValue]);
 
   useEffect(() => {
     async function loadCategories(): Promise<void> {
-      // Load categories from API
+      try {
+        const { data } = await api.get<Category[]>('categories');
+
+        setCategories(data);
+      } catch (error) {
+        Alert.alert(
+          'Inconsistência',
+          'Não foi possível carregar as categorias',
+        );
+      }
     }
 
     loadCategories();
@@ -75,6 +97,7 @@ const Dashboard: React.FC = () => {
 
   function handleSelectCategory(id: number): void {
     // Select / deselect category
+    setSelectedCategory(id);
   }
 
   return (
