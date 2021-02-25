@@ -5,11 +5,12 @@ import React, {
   useMemo,
   useLayoutEffect,
 } from 'react';
-import { Image } from 'react-native';
+import { Image, Alert } from 'react-native';
 
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { AxiosError } from 'axios';
 import formatValue from '../../utils/formatValue';
 
 import api from '../../services/api';
@@ -73,38 +74,122 @@ const FoodDetails: React.FC = () => {
 
   useEffect(() => {
     async function loadFood(): Promise<void> {
-      // Load a specific food with extras based on routeParams id
+      try {
+        const { data } = await api.get<Food>(`foods/${routeParams.id}`);
+
+        setFood({ ...data, formattedPrice: formatValue(data.price) });
+        setExtras(data.extras.map(extra => ({ ...extra, quantity: 0 })));
+      } catch (error) {
+        Alert.alert(
+          'Inconsistência',
+          'Não foi possível carregar um prato em específico',
+        );
+      }
     }
 
+    async function checkIsFavorite(): Promise<void> {
+      try {
+        await api.get<Food>(`favorites/${routeParams.id}`);
+
+        setIsFavorite(true);
+      } catch (error) {
+        if ((error as AxiosError).isAxiosError) {
+          if ((error as AxiosError).response?.status === 404) {
+            setIsFavorite(false);
+          }
+        } else {
+          Alert.alert(
+            'Inconsistência',
+            'Não foi possível checar se o prato é favorito',
+          );
+        }
+      }
+    }
+    checkIsFavorite();
     loadFood();
   }, [routeParams]);
 
   function handleIncrementExtra(id: number): void {
     // Increment extra quantity
+    setExtras(current =>
+      current.map(extra => {
+        if (extra.id === id) {
+          return {
+            ...extra,
+            quantity: extra.quantity + 1,
+          };
+        }
+
+        return extra;
+      }),
+    );
   }
 
   function handleDecrementExtra(id: number): void {
-    // Decrement extra quantity
+    setExtras(current =>
+      current.map(extra => {
+        if (extra.id === id) {
+          return {
+            ...extra,
+            quantity: extra.quantity - 1,
+          };
+        }
+
+        return extra;
+      }),
+    );
   }
 
   function handleIncrementFood(): void {
     // Increment food quantity
+    setFoodQuantity(current => current + 1);
   }
 
   function handleDecrementFood(): void {
     // Decrement food quantity
+    setFoodQuantity(current => (current > 1 ? current - 1 : current));
   }
 
-  const toggleFavorite = useCallback(() => {
+  const toggleFavorite = useCallback(async () => {
     // Toggle if food is favorite or not
+
+    try {
+      if (isFavorite) {
+        await api.delete(`favorites/${food.id}`);
+        setIsFavorite(false);
+      } else {
+        await api.post(`favorites`, food);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      Alert.alert('Inconsistência', 'Não foi possível alterar o favorito');
+    }
   }, [isFavorite, food]);
 
   const cartTotal = useMemo(() => {
-    // Calculate cartTotal
+    const totalExtras = extras.reduce((prev, curr) => {
+      return prev + curr.quantity * curr.value;
+    }, 0);
+
+    const totalFood = food.price * foodQuantity;
+
+    return formatValue(totalExtras + totalFood);
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
-    // Finish the order and save on the API
+    try {
+      await api.post('orders', {
+        ...food,
+        id: Date.now(),
+        price: food.price * foodQuantity,
+        extras,
+      });
+
+      Alert.alert('Pedido confirmado');
+      navigation.navigate('Orders');
+    } catch (error) {
+      Alert.alert('Inconsistência', 'Não foi possível adicionar o pedido');
+    }
   }
 
   // Calculate the correct icon name
@@ -130,7 +215,6 @@ const FoodDetails: React.FC = () => {
   return (
     <Container>
       <Header />
-
       <ScrollContainer>
         <FoodsContainer>
           <Food>

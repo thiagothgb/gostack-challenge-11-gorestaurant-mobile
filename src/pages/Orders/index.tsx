@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Image } from 'react-native';
-
+import { Image, Alert } from 'react-native';
+// import { useIsFocused } from '@react-navigation/native';
 import api from '../../services/api';
 import formatValue from '../../utils/formatValue';
 
@@ -29,14 +29,27 @@ interface Food {
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Food[]>([]);
+  // const isFocused = useIsFocused();
 
   useEffect(() => {
     async function loadOrders(): Promise<void> {
-      // Load orders from API
+      try {
+        const { data } = await api.get<Food[]>('orders');
+
+        setOrders(
+          data.map(food => ({
+            ...food,
+            formattedPrice: formatValue(food.price),
+          })),
+        );
+      } catch (error) {
+        Alert.alert('Inconsistência', 'Não foi possível carregar seus pedidos');
+      }
     }
 
     loadOrders();
   }, []);
+  // }, [isFocused]);
 
   return (
     <Container>

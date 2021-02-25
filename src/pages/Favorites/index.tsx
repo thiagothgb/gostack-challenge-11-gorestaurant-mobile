@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Image } from 'react-native';
-
+import { Image, Alert } from 'react-native';
+// import { useIsFocused } from '@react-navigation/native';
 import api from '../../services/api';
 import formatValue from '../../utils/formatValue';
 
@@ -29,14 +29,30 @@ interface Food {
 
 const Favorites: React.FC = () => {
   const [favorites, setFavorites] = useState<Food[]>([]);
+  // const isFocused = useIsFocused();
 
   useEffect(() => {
     async function loadFavorites(): Promise<void> {
-      // Load favorite foods from api
+      try {
+        const { data } = await api.get<Food[]>('favorites');
+
+        setFavorites(
+          data.map(food => ({
+            ...food,
+            formattedPrice: formatValue(food.price),
+          })),
+        );
+      } catch (error) {
+        Alert.alert(
+          'Inconsistência',
+          'Não foi possível carregar os seus itens favoritos',
+        );
+      }
     }
 
     loadFavorites();
   }, []);
+  // }, [isFocused]);
 
   return (
     <Container>

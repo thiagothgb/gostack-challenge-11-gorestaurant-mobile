@@ -54,28 +54,40 @@ const Dashboard: React.FC = () => {
   const navigation = useNavigation();
 
   async function handleNavigate(id: number): Promise<void> {
-    // Navigate do ProductDetails page
+    navigation.navigate('FoodDetails', {
+      id,
+    });
   }
 
   useEffect(() => {
     async function loadFoods(): Promise<void> {
       try {
-        const { data } = await api.get<Category[]>(
-          `foods?category=${selectedCategory}`,
-        );
+        const params: { [key: string]: number | string } = {};
 
-        setCategories(data);
-      } catch (error) {
-        Alert.alert(
-          'Inconsistência',
-          'Não foi possível carregar as categorias',
+        if (selectedCategory) {
+          params.category_like = selectedCategory;
+        } else if (searchValue) {
+          params.name_like = searchValue;
+        }
+
+        const { data } = await api.get<Food[]>(`foods`, {
+          params,
+        });
+
+        setFoods(
+          data.map(food => {
+            return {
+              ...food,
+              formattedPrice: formatValue(food.price),
+            };
+          }),
         );
+      } catch (error) {
+        Alert.alert('Inconsistência', 'Não foi possível carregar as comidas');
       }
     }
 
-    if (selectedCategory) {
-      loadFoods();
-    }
+    loadFoods();
   }, [selectedCategory, searchValue]);
 
   useEffect(() => {
@@ -96,8 +108,9 @@ const Dashboard: React.FC = () => {
   }, []);
 
   function handleSelectCategory(id: number): void {
-    // Select / deselect category
-    setSelectedCategory(id);
+    if (selectedCategory === id) {
+      setSelectedCategory(undefined);
+    } else setSelectedCategory(id);
   }
 
   return (
